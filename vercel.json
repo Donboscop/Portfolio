@@ -12,11 +12,9 @@
       "destination": "/api/index.js"
     },
     {
-      "handle": "filesystem"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
 }
+
