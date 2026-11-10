@@ -6,6 +6,8 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 
+import os from 'os';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -30,10 +32,15 @@ if (isS3Configured()) {
   });
 }
 
-// Local Storage Fallback
-const uploadDir = 'uploads/';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Local Storage Fallback (Use os.tmpdir() in serverless environments like Vercel where /var/task is read-only)
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadDir = isServerless ? path.join(os.tmpdir(), 'uploads') : 'uploads/';
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Could not create upload directory:', err.message);
 }
 
 const localStorage = multer.diskStorage({

@@ -8,23 +8,46 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-let isConnected = false;
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 export const initDB = async () => {
-  if (isConnected || mongoose.connection.readyState === 1) {
-    return true;
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return cached.conn;
   }
 
-  const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/portfolio';
+  const mongoUri = process.env.MONGO_URI;
+
+  if (!mongoUri) {
+    console.error('❌ MONGO_URI environment variable is missing.');
+    return null;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    };
+
+    cached.promise = mongoose.connect(mongoUri, opts).then((m) => {
+      console.log(`✅ MongoDB Atlas Connected: ${m.connection.host}`);
+      return m;
+    }).catch((err) => {
+      console.error(`❌ MongoDB Connection Error: ${err.message}`);
+      cached.promise = null;
+      return null;
+    });
+  }
 
   try {
-    const conn = await mongoose.connect(mongoUri);
-    isConnected = true;
-    console.log(`✅ MongoDB Atlas Connected: ${conn.connection.host}`);
-    return true;
-  } catch (error) {
-    console.error(`❌ MongoDB Connection Error: ${error.message}`);
-    return false;
+    cached.conn = await cached.promise;
+    return cached.conn;
+  } catch (e) {
+    cached.promise = null;
+    return null;
   }
 };
 

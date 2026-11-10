@@ -16,6 +16,17 @@ const isMailConfigured = () => {
 
 const createTransporter = () => {
   if (isMailConfigured()) {
+    const isGmail = (process.env.EMAIL_HOST || '').includes('gmail') || (process.env.EMAIL_USER || '').endsWith('@gmail.com');
+    if (isGmail) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '',
+        },
+      });
+    }
+
     return nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.EMAIL_PORT, 10) || 587,

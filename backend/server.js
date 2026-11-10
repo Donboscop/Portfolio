@@ -2,8 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
-import { initDB } from './config/db.js';
+import mongoose, { initDB } from './config/db.js';
 import fs from 'fs';
 import Project from './models/Project.js';
 
@@ -37,7 +38,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Ensure uploads folder exists and serve static
-const uploadDir = path.join(__dirname, 'uploads');
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadDir = isServerless ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, 'uploads');
 try {
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -49,12 +51,20 @@ app.use('/uploads', express.static(uploadDir));
 
 // Connect DB middleware for Serverless environment
 app.use(async (req, res, next) => {
-  await initDB();
+  try {
+    await initDB();
+  } catch (err) {
+    console.error('Database connection middleware error:', err);
+  }
   next();
 });
 
 // Health check
-app.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'MongoDB Atlas Backend server is running.' }));
+app.get('/api/health', (req, res) => res.json({
+  status: 'OK',
+  message: 'Portfolio Backend API is running.',
+  dbConnected: mongoose.connection.readyState === 1
+}));
 
 // Mount API Routes
 app.use('/api/auth', authRoutes);
@@ -136,9 +146,8 @@ app.use((err, req, res, next) => {
 });
 
 // Initialize DB and start listening if not running on Vercel
-initDB().catch(err => console.error('Database initialization error:', err));
-
 if (!process.env.VERCEL) {
+  initDB().catch(err => console.error('Database initialization error:', err));
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
   });

@@ -70,9 +70,9 @@ router.post('/otp/send', async (req, res) => {
     res.json({ 
       success: true, 
       otp: generatedOtp,
-      message: mailResult.fallback 
-        ? 'Verification code generated! Check your email or terminal log.' 
-        : 'Verification code sent directly to your email inbox!' 
+      message: (mailResult && mailResult.success)
+        ? 'Verification code sent directly to your email inbox!' 
+        : 'Verification code generated! Check your terminal log.' 
     });
   } catch (error) {
     console.error('OTP Send Error:', error);
