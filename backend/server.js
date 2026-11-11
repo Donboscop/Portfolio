@@ -39,15 +39,24 @@ app.use(express.urlencoded({ extended: true }));
 
 // Ensure uploads folder exists and serve static
 const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const uploadDir = isServerless ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, 'uploads');
+const localUploadsDir = path.join(__dirname, 'uploads');
+const rootUploadsDir = path.join(process.cwd(), 'backend', 'uploads');
+const tempUploadsDir = path.join(os.tmpdir(), 'uploads');
+
 try {
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+  const dirToCreate = isServerless ? tempUploadsDir : localUploadsDir;
+  if (!fs.existsSync(dirToCreate)) {
+    fs.mkdirSync(dirToCreate, { recursive: true });
   }
 } catch (err) {
   console.warn('Could not create uploads directory:', err.message);
 }
-app.use('/uploads', express.static(uploadDir));
+
+[localUploadsDir, rootUploadsDir, tempUploadsDir].forEach(dir => {
+  if (fs.existsSync(dir)) {
+    app.use('/uploads', express.static(dir));
+  }
+});
 
 // Connect DB middleware for Serverless environment
 app.use(async (req, res, next) => {

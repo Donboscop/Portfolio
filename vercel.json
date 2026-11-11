@@ -3,6 +3,11 @@
   "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "backend/uploads/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
